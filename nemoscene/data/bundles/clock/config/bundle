@@ -1,0 +1,2 @@
+uuid = "clock"
+folders = ["app", "lib", "user"]

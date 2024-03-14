@@ -1,0 +1,2 @@
+uuid = "google_calendar"
+folders = ["app", "lib"]
