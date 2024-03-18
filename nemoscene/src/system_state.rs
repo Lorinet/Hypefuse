@@ -4,8 +4,7 @@ use log::info;
 use once_cell::sync::Lazy;
 use crate::app::manager::AppManager;
 use crate::configuration::ConfigurationRegistry;
-use crate::dashboard::{Dashboard, DashboardMessage, Point};
-use crate::dashboard::view::ViewParameters;
+use crate::dashboard::{Dashboard, Point};
 use crate::server::run_server;
 
 pub static SYSTEM_STATE: Lazy<Arc<Mutex<SystemState>>> = Lazy::new(|| {

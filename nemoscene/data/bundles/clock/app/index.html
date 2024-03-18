@@ -1,19 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head></head>
-    <body onload="clock()">
-    <div style="width: 100%; height: 100%;" id="clock_text"></div>
-    </body>
-    <script src="http://localhost:1337/bundle/silvertree/lib/lib.js"></script>
-    <script src="http://localhost:1337/bundle/clock/lib/fittext.js"></script>
+<head>
+    <style>
+        div {
+            line-height: 1.1;
+        }
+    </style>
+</head>
+<body onload="clock()">
+<div style="width: 100%; height: 100%;" id="time_text"></div>
+<div style="width: 100%; height: 100%;" id="date_text"></div>
+</body>
+<script src="http://localhost:1337/bundle/silvertree/lib/lib.js"></script>
+<script src="http://localhost:1337/bundle/clock/lib/fittext.js"></script>
 <script>
     Silvertree.initFramework("clock");
 
     let showSeconds = Silvertree.getConfigurationValue("clock", "show_seconds");
-    let fontWeight = Silvertree.getConfigurationValue("clock", "font_weight");
+    let showDate = Silvertree.getConfigurationValue("clock", "show_date");
+    let timeFontWeight = Silvertree.getConfigurationValue("clock", "time_font_weight");
+    let dateFontWeight = Silvertree.getConfigurationValue("clock", "date_font_weight");
 
     function clock() {
-        window.fitText(document.getElementById('clock_text', 2));
+        window.fitText(document.getElementById('time_text'), 0.9);
+        window.fitText(document.getElementById('date_text'), 3.5);
         const today = new Date();
         let h = today.getHours();
         let m = today.getMinutes();
@@ -22,14 +32,21 @@
         s = checkTime(s);
         let time = h + ":" + m;
         if (showSeconds) time += ":" + s;
-        document.getElementById('clock_text').innerHTML = time;
+        document.getElementById('time_text').innerHTML = time;
+        document.getElementById('time_text').style.fontWeight = timeFontWeight;
 
-        document.getElementById('clock_text').style.fontWeight = fontWeight;
+        if (showDate) {
+            document.getElementById('date_text').innerHTML = `${today.toLocaleDateString("en-US", {weekday: "short"})} ${today.toLocaleDateString("en-US", {month: "short"})} ${today.toLocaleDateString("en-US", {day: "numeric"})}`;
+            document.getElementById('date_text').style.fontWeight = dateFontWeight;
+        }
+
         setTimeout(clock, 1000);
     }
 
     function checkTime(i) {
-        if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
+        if (i < 10) {
+            i = "0" + i
+        }
         return i;
     }
 

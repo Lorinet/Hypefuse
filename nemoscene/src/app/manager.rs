@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use gtk::Application;
 use log::{error, info};
 use walkdir::WalkDir;
 use crate::app::Bundle;

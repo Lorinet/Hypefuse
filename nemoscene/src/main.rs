@@ -1,11 +1,8 @@
-#![feature(c_size_t)]
 extern crate core;
 
-use std::env;
-use gtk::{prelude::*, Window, WindowType};
-use gtk::glib;
+use std::{env, thread};
+use std::time::Duration;
 use log::info;
-use webkit2gtk::WebViewExt;
 use crate::system_state::SystemState;
 
 pub mod server;
@@ -19,6 +16,8 @@ fn main() {
     env::set_var("RUST_LOG", "info");
     env_logger::init();
     info!("Hypefuse [Nemoscene Version 0.1]");
-    get_system_state!();
-    loop{}
+    { get_system_state!(); }
+    loop {
+         thread::sleep(Duration::from_secs(2));
+    }
 }

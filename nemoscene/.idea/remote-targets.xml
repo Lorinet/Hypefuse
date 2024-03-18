@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <targets>
+      <target name="hypefuse@linfinitysmartmirror.local:22" type="ssh/sftp" uuid="211b3fd5-2961-458e-bde9-35a794fa934a">
+        <config>
+          <option name="projectRootOnTarget" value="/hypefuse/nemoscene" />
+          <option name="serverName" value="hypefuse@linfinitysmartmirror.local:22 password" />
+          <option name="useRsync" value="true" />
+        </config>
+        <ContributedStateBase type="RsLanguageRuntime">
+          <config>
+            <option name="cargoPath" value="$PROJECT_DIR$/../../../../hypefuse/.bash_profile: line 1: #: command not found" />
+            <option name="cargoVersion" value="$PROJECT_DIR$/../../../../hypefuse/.bash_profile: line 1: #: command not found" />
+            <option name="localBuildArgs" value="--target=arm-unknown-linux-gnueabihf" />
+            <option name="rustcPath" value="$PROJECT_DIR$/../../../../hypefuse/.bash_profile: line 1: #: command not found" />
+            <option name="rustcVersion" value="$PROJECT_DIR$/../../../../hypefuse/.bash_profile: line 1: #: command not found" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>

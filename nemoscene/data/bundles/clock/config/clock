@@ -1,2 +1,4 @@
 show_seconds = false
-font_weight = 200
+time_font_weight = 200
+show_date = true
+date_font_weight = 600

@@ -79,6 +79,13 @@ fn handle_connection(
                 Err(error) => Err(error),
                 Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
             }
+        } else if request_type == "dashboard" {
+            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
+        } else if request_type == "reload_dashboard" {
+            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
+        } else if request_type == "trigger_reload_dashboard" {
+            get_system_state!().dashboard.set_reload_requested(true);
+            Ok(())
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
         } else {
@@ -145,7 +152,7 @@ fn respond(stream: &mut TcpStream, status_code: i32, content_type: String, conte
         )
     } else {
         format!(
-            "{}\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n{}",
+            "{}\r\nContent-Length: {}\r\nContent-Type: {}\r\nAccess-Control-Allow-Origin: *\r\n\r\n{}",
             format!("HTTP/1.1 {} OK", status_code),
             contents.len(),
             content_type,
