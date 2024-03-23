@@ -16,8 +16,9 @@ impl AppManager {
     }
 
     pub fn init(&mut self, configuration: &mut ConfigurationRegistry) {
+        self.bundles.clear();
         info!("Loading bundles");
-        for folder in WalkDir::new("data/bundles").min_depth(1).max_depth(1) {
+        for folder in WalkDir::new("data").min_depth(1).max_depth(1) {
             match folder {
                 Ok(folder) => if folder.file_type().is_dir() {
                     let path = folder.path().to_str().unwrap();

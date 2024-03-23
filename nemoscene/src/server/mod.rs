@@ -32,6 +32,7 @@ static CONTENT_TYPES: Lazy<BTreeMap<&str, &str>> = Lazy::new(|| BTreeMap::from([
 ]));
 
 pub fn run_server() -> ! {
+    info!("Starting Hypefuse system server...");
     let listener = TcpListener::bind("0.0.0.0:1337").unwrap();
     let pool = threadpool::ThreadPool::new(4);
     info!("Accepting clients");
@@ -74,20 +75,45 @@ fn handle_connection(
             } else {
                 Err(anyhow!("Invalid request"))
             }
-        } else if request_type == "config" {
-            match serve_config(request.get) {
+        } else if request_type == "config_get" {
+            match serve_config_get(request.get) {
                 Err(error) => Err(error),
                 Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+            }
+        } else if request_type == "config_all" {
+            match get_system_state!().configuration.get_json() {
+                Err(error) => Err(error),
+                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+            }
+        } else if request_type == "config_set" {
+            match serve_config_set(request.get) {
+                Err(error) => Err(error),
+                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
+            }
+        } else if request_type == "config_create_base" {
+            match serve_config_create_base(request.get) {
+                Err(error) => Err(error),
+                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
+            }
+        } else if request_type == "config_delete_base" {
+            match serve_config_delete_base(request.get) {
+                Err(error) => Err(error),
+                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
             }
         } else if request_type == "dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
         } else if request_type == "reload_dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
+        } else if request_type == "trigger_reload_system" {
+            get_system_state!().init();
+            success_response(&mut stream)
         } else if request_type == "trigger_reload_dashboard" {
             get_system_state!().dashboard.set_reload_requested(true);
-            Ok(())
+            success_response(&mut stream)
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
+        } else if request_type == "" {
+            respond(&mut stream, 307, String::new(), "/bundle/settings".as_bytes().to_vec())
         } else {
             Err(anyhow!("Invalid request type: {}", request_type))
         }
@@ -101,15 +127,73 @@ fn handle_connection(
     }
 }
 
-fn serve_config(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
+fn serve_config_get(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
     if let Some(get) = get {
         if let (Some(uuid), Some(base), Some(key)) = (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("key").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            let path = format!("data/bundles/{}/config/{}", uuid, base);
-            if let Some(base) = get_system_state!().configuration.get_base(path.as_str()) {
+            if let Some(base) = get_system_state!().configuration.get_base_of_bundle(uuid.as_str(), base.as_str()) {
                 base.get_json(key.as_str()).ok_or(anyhow!("Invalid configuration key: {}", key))
             } else {
                 Err(anyhow!("Invalid configuration base: {}", base))
             }
+        } else {
+            Err(anyhow!("Invalid request"))
+        }
+    } else {
+        Err(anyhow!("Invalid request"))
+    }
+}
+
+fn serve_config_set(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
+    if let Some(get) = get {
+        if let (Some(uuid), Some(base), Some(key), Some(value)) =
+            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
+             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new())),
+             get.get("key").map(|v| v.as_string().cloned().unwrap_or(String::new())),
+             get.get("value").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+            if let Some(base) = get_system_state!().configuration.get_base_of_bundle_mut(uuid.as_str(), base.as_str()) {
+                base.set_json(key.as_str(), value.as_str())?;
+            } else {
+                return Err(anyhow!("Invalid configuration base: {}", base));
+            }
+            get_system_state!().configuration.commit()?;
+            if uuid == "widgets" || uuid == "wifi" {
+                get_system_state!().init();
+            }
+            Ok(())
+        } else {
+            Err(anyhow!("Invalid request"))
+        }
+    } else {
+        Err(anyhow!("Invalid request"))
+    }
+}
+
+fn serve_config_create_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
+    if let Some(get) = get {
+        if let (Some(uuid), Some(base)) =
+            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
+             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+            get_system_state!().configuration.create_base_of_bundle(uuid.as_str(), base.as_str())?;
+            get_system_state!().configuration.commit()
+        } else {
+            Err(anyhow!("Invalid request"))
+        }
+    } else {
+        Err(anyhow!("Invalid request"))
+    }
+}
+
+fn serve_config_delete_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
+    if let Some(get) = get {
+        if let (Some(uuid), Some(base)) =
+            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
+             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+            get_system_state!().configuration.delete_base_of_bundle(uuid.as_str(), base.as_str())?;
+            get_system_state!().configuration.commit()?;
+            if uuid == "widgets" || uuid == "wifi" {
+                get_system_state!().init();
+            }
+            Ok(())
         } else {
             Err(anyhow!("Invalid request"))
         }
@@ -141,6 +225,10 @@ fn serve_file(
 
 fn error_response(stream: &mut TcpStream, message: String, backtrace: Option<String>) -> anyhow::Result<()> {
     respond(stream, 500, String::from(*CONTENT_TYPES.get("txt").unwrap()), format!("{}\n{}", message, backtrace.or(Some(String::new())).unwrap()).into_bytes())
+}
+
+fn success_response(stream: &mut TcpStream) -> anyhow::Result<()> {
+    respond(stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![])
 }
 
 fn respond(stream: &mut TcpStream, status_code: i32, content_type: String, contents: Vec<u8>) -> anyhow::Result<()> {

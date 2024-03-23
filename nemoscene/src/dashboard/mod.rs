@@ -82,30 +82,7 @@ impl Point {
     }
 }
 
-
-#[derive(Copy, Clone, Debug)]
-pub struct Viewport {
-    pub screen_size: Point,
-    pub pixel_ratio: Point,
-}
-
-impl Default for Viewport {
-    fn default() -> Self {
-        Viewport {
-            screen_size: Point::default(),
-            pixel_ratio: Point::default(),
-        }
-    }
-}
-
-impl Viewport {
-    fn to_actual_pixels(&self, point: Point) -> Point {
-        point * self.pixel_ratio
-    }
-}
-
 pub struct Dashboard {
-    viewport: Viewport,
     widgets: Vec<View>,
     reload_requested: bool,
 }
@@ -113,33 +90,22 @@ pub struct Dashboard {
 impl Dashboard {
     pub fn new() -> Dashboard {
         Dashboard {
-            viewport: Viewport::default(),
             widgets: Vec::new(),
             reload_requested: true,
         }
     }
 
     pub fn init(&mut self, config: &ConfigurationRegistry) -> anyhow::Result<()> {
-        let screen_width: i32 = {
-            config.get_base("data/configuration/dashboard").ok_or(anyhow!("Cannot load configuration base"))?.get_i64("screen_width").ok_or(anyhow!("Cannot load screen size from configuration"))? as i32
-        };
-        let screen_height: i32 = {
-            config.get_base("data/configuration/dashboard").ok_or(anyhow!("Cannot load configuration base"))?.get_i64("screen_height").ok_or(anyhow!("Cannot load screen size from configuration"))? as i32
-        };
-
-        self.viewport = Viewport {
-            screen_size: Point::new_i32(screen_width, screen_height),
-            pixel_ratio: Point::new_f32(screen_width as f32 / 1000.00, screen_height as f32 / 1000.00),
-        };
-
-        for widget in config.get_bases_of("data/configuration/widgets") {
+        info!("Initializing Dashboard...");
+        self.widgets.clear();
+        for widget in config.get_bases_of_bundle("widgets") {
+            info!("Loading widget for '{}'", widget.get_str("uuid").unwrap_or("undefined".to_string()));
             match Self::load_widget(widget) {
                 Ok(widget) => self.widgets.push(widget),
                 Err(error) => error!("Failed to attach widget {:#?}: {}", widget, error),
             }
         }
-
-
+        self.reload_requested = true;
         Ok(())
     }
 

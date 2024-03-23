@@ -14,7 +14,7 @@ impl View {
             <iframe
                 width=self.size.x
                 height=self.size.y
-                style=format!("left: {}px; right: {}px;", self.position.x, self.position.y)
+                style=format!("left: {}px; top: {}px;", self.position.x, self.position.y)
                 src=format!("http://localhost:1337/bundle/{}", self.uuid)>
             </iframe>
         )

@@ -9,7 +9,6 @@ pub mod manager;
 pub struct Bundle {
     pub base_path: String,
     pub uuid: String,
-    pub folders: BTreeMap<String, String>,
 }
 
 impl Bundle {
@@ -19,7 +18,6 @@ impl Bundle {
         Ok(Bundle {
             base_path: path.to_string(),
             uuid: bundle_info.get_str("uuid").ok_or(anyhow!("Invalid bundle configuration"))?,
-            folders: bundle_info.get_string_array("folders").ok_or(anyhow!("Invalid bundle configuration"))?.iter().map(|f| (f.clone(), pathbuf.join(f).to_str().unwrap().to_string())).collect(),
         })
     }
 
