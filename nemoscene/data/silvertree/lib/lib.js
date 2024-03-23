@@ -87,4 +87,15 @@ class Silvertree {
         request.open("GET", this.serverAddress + "/trigger_reload_system", false);
         request.send(null);
     }
+
+    static checkSystemPassword(password) {
+        let request = new XMLHttpRequest();
+        request.open("POST", "http://localhost:1337/authenticate", false);
+        request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        request.send(`password=${encodeURIComponent(password)}`);
+        if (request.status === 200) {
+            return JSON.parse(request.responseText);
+        }
+        return false;
+    }
 }

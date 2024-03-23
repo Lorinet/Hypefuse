@@ -95,7 +95,7 @@ impl Dashboard {
         }
     }
 
-    pub fn init(&mut self, config: &ConfigurationRegistry) -> anyhow::Result<()> {
+    pub fn init(&mut self, config: &ConfigurationRegistry) {
         info!("Initializing Dashboard...");
         self.widgets.clear();
         for widget in config.get_bases_of_bundle("widgets") {
@@ -106,7 +106,6 @@ impl Dashboard {
             }
         }
         self.reload_requested = true;
-        Ok(())
     }
 
     fn load_widget(base: &ConfigurationBase) -> anyhow::Result<View> {

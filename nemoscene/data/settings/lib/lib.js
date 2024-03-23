@@ -1,5 +1,6 @@
 let uid = 0;
 let godMode = false;
+let password = null;
 
 function getUID() {
     return uid++;
@@ -99,7 +100,11 @@ function addSetting(table, keyUID, key, value) {
     keyCell.appendChild(keyCellInput);
     let valueCell = document.createElement("td");
     let valueCellInput = document.createElement("input");
-    valueCellInput.type = "text";
+    if (key.startsWith("password")) {
+        valueCellInput.type = "password";
+    } else {
+        valueCellInput.type = "text";
+    }
     valueCellInput.name = `value_${keyUID}`;
     if (value != null) {
         valueCellInput.value = value;
@@ -161,6 +166,32 @@ function isUserCustomizable(bundle) {
     return bundle === "widgets" || bundle === "wifi";
 }
 
+function showLogin(element) {
+    let title = document.createElement("h3");
+    title.innerText = "Enter password to unlock";
+
+    let passwordInput = document.createElement("input");
+    passwordInput.type = "password";
+    passwordInput.placeholder = "password...";
+    passwordInput.id = "password_box";
+
+    let loginButton = document.createElement("div");
+    loginButton.classList.add("save_button");
+    loginButton.innerText = "Unlock";
+    loginButton.onclick = function() {
+        let pval = document.getElementById("password_box").value;
+        let ok = Silvertree.checkSystemPassword(pval);
+        if(ok) {
+            password = pval;
+            showConfiguration();
+        }
+    }
+
+    element.appendChild(title);
+    element.appendChild(passwordInput);
+    element.appendChild(loginButton);
+}
+
 function renderConfiguration(element, configuration) {
     element.innerHTML = "";
     Object.keys(configuration).forEach(function (bundle_config) {
@@ -188,8 +219,7 @@ function renderConfiguration(element, configuration) {
                 deleteAction = function () {
                     Silvertree.deleteGlobalConfigurationBase(bundle_config, base);
                     Silvertree.reloadDashboard();
-                    if(bundle_config === "wifi")
-                    {
+                    if (bundle_config === "wifi") {
                         Silvertree.reloadSystem();
                     }
                     showConfiguration();
@@ -202,7 +232,7 @@ function renderConfiguration(element, configuration) {
             addAction = true;
         }
         if (bases.children.length > 0 || godMode) {
-            if(bases.children.length > 2 || godMode || isUserCustomizable(bundle_config) || lastBase !== bundle_config) {
+            if (bases.children.length > 2 || godMode || isUserCustomizable(bundle_config) || lastBase !== bundle_config) {
                 addDropdown(element, bundle_config, null, null, addAction, bases);
             } else if (bases.children.length === 2) {
                 element.appendChild(bases.getElementsByTagName("div")[0]);
@@ -239,7 +269,7 @@ function addConfigurationWizard(element, template) {
             Silvertree.setGlobalConfigurationValue(template, base, "height", 100);
             Silvertree.setGlobalConfigurationValue(template, base, "uuid", JSON.stringify("clock"));
         } else if (template === "wifi") {
-            Silvertree.setGlobalConfigurationValue(template, base, "name", JSON.stringify(""));
+            Silvertree.setGlobalConfigurationValue(template, base, "name", JSON.stringify(base));
             Silvertree.setGlobalConfigurationValue(template, base, "password", JSON.stringify(""));
         }
         showConfiguration();
@@ -256,7 +286,11 @@ function addConfigurationWizard(element, template) {
 }
 
 function showConfiguration() {
-    renderConfiguration(document.getElementById("settings_container"), Silvertree.getGlobalConfiguration());
+    if(password == null) {
+        showLogin(document.getElementById("settings_container"));
+    } else {
+        renderConfiguration(document.getElementById("settings_container"), Silvertree.getGlobalConfiguration());
+    }
 }
 
 function god() {
