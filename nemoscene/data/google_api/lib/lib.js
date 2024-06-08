@@ -5,7 +5,8 @@ class GoogleAuth {
 
     getLoginCode() {
         return GoogleAuth.#postRequest("https://oauth2.googleapis.com/device/code",  {
-            client_id:
+            client_id: this.client_id,
+
         })
     }
 
