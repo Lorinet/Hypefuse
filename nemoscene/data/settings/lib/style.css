@@ -1,15 +1,28 @@
 * {
     box-sizing: border-box;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: "Inter Tight", "Inter", monospace;
 }
 
 h1 {
     text-align: center;
+    margin-top: 10px;
+}
+
+h3 {
+    text-align: center;
+    color: powderblue;
+}
+
+.password_title {
+    margin-bottom: 10px;
+    margin-top: 50px;
 }
 
 .logo_box {
     text-align: center;
-    margin-top: 20px;
+    margin-top: 30px;
 }
 
 .dropdown_header {
@@ -80,6 +93,23 @@ h1 {
     border-bottom: none;
 }
 
+.password_box {
+    padding: 10px;
+    color: powderblue;
+    background-color: transparent;
+    border: 2px solid powderblue;
+    width: 100%;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 18px;
+    margin-top: 10px;
+    appearance: none;
+    outline: none;
+}
+
+.password_box:focus {
+    border-color: #97d6e1;
+}
 
 .setting_box {
     border-radius: 5px;

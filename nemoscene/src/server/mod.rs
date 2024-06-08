@@ -23,12 +23,13 @@ use crate::get_system_state;
 use self::http::{HttpError, ParameterValue};
 
 static CONTENT_TYPES: Lazy<BTreeMap<&str, &str>> = Lazy::new(|| BTreeMap::from([
-    ("html", "text/html"),
+    ("html", "text/html; charset=utf-8"),
     ("txt", "text/plain"),
     ("ttf", "font/ttf"),
     ("ico", "image/x-icon"),
-    ("js", "text/javascript"),
+    ("js", "text/javascript; charset=utf-8"),
     ("json", "application/json"),
+    ("css", "text/css; charset=utf-8"),
 ]));
 
 pub fn run_server() -> ! {
@@ -100,15 +101,26 @@ fn handle_connection(
                 Err(error) => Err(error),
                 Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
             }
+        } else if request_type == "authenticate" {
+            match serve_authenticate(request.post) {
+                Err(error) => Err(error),
+                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+            }
         } else if request_type == "dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
-        } else if request_type == "reload_dashboard" {
+        }  else if request_type == "reload_dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
         } else if request_type == "trigger_reload_system" {
             get_system_state!().init();
             success_response(&mut stream)
         } else if request_type == "trigger_reload_dashboard" {
             get_system_state!().dashboard.set_reload_requested(true);
+            success_response(&mut stream)
+        } else if request_type == "trigger_reload_dashboard" {
+            get_system_state!().dashboard.set_reload_requested(true);
+            success_response(&mut stream)
+        } else if request_type == "trigger_reconnect_network" {
+            get_system_state!().network_manager.set_reconnect_requested(true);
             success_response(&mut stream)
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
@@ -124,6 +136,19 @@ fn handle_connection(
         error_response(&mut stream, error.to_string(), Some(error.backtrace().to_string()))
     } else {
         Ok(())
+    }
+}
+
+fn serve_authenticate(post: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
+    if let Some(post) = post {
+        if let Some(password) = post.get("password").map(|v| v.as_string().cloned().unwrap_or(String::new())) {
+            let ok = get_system_state!().configuration.get_base_of_bundle("system", "system").ok_or(anyhow!("System configuration error"))?.get_str("password").ok_or(anyhow!("System configuration error"))? == password;
+            Ok(serde_json::to_string(&ok)?.into_bytes())
+        } else {
+            Err(anyhow!("Invalid request"))
+        }
+    } else {
+        Err(anyhow!("Invalid request"))
     }
 }
 

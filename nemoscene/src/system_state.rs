@@ -38,7 +38,7 @@ impl SystemState {
         info!("Initializing system");
         self.configuration.init();
         self.app_manager.init(&mut self.configuration);
-        self.dashboard.init(&self.configuration).expect("Cannot initialize Dashboard");
+        self.dashboard.init(&self.configuration);
         self.network_manager.init(&self.configuration);
     }
 

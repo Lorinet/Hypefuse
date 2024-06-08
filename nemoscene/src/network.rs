@@ -7,16 +7,22 @@ use crate::configuration::ConfigurationRegistry;
 
 pub struct NetworkManager {
     connections: Vec<(String, String)>,
+    reconnect: bool,
 }
 
 impl NetworkManager {
     pub fn new() -> NetworkManager {
         NetworkManager {
             connections: Vec::new(),
+            reconnect: true,
         }
     }
 
     pub fn init(&mut self, configuration: &ConfigurationRegistry) {
+        if !self.reconnect {
+            info!("Network already initialized, no need to reconnect.");
+            return;
+        }
         self.connections.clear();
         info!("Setting up WiFi...");
         for network in configuration.get_bases_of_bundle("wifi") {
@@ -28,6 +34,7 @@ impl NetworkManager {
             }
         }
         self.connect_all();
+        self.reconnect = false;
     }
 
     pub fn connect_all(&self) {
@@ -41,7 +48,20 @@ impl NetworkManager {
             if let Err(error) = Self::hotspot() {
                 error!("Could not activate hotspot: {}", error);
             }
+            if let Err(error) = Self::avahi() {
+                error!("Avahi-daemon error: {}", error);
+            }
         });
+    }
+
+    fn avahi() -> anyhow::Result<()> {
+        info!("Reloading avahi-daemon...");
+        let status = Command::new("sv")
+            .arg("restart")
+            .arg("avahi-daemon")
+            .status()?;
+        info!("Runit exit code: {}", status);
+        Ok(())
     }
 
     fn hotspot() -> anyhow::Result<()> {
@@ -71,5 +91,9 @@ impl NetworkManager {
             .status()?;
         info!("NetworkManager exit code: {}", status);
         Ok(())
+    }
+
+    pub fn set_reconnect_requested(&mut self, reconnect: bool) {
+        self.reconnect = reconnect;
     }
 }
