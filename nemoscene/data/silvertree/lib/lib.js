@@ -2,7 +2,13 @@ class Silvertree {
     static uuid = "";
     static serverAddress = "http://localhost:1337";
 
-    static initFramework(uuid) {
+    static initFramework(uuid, external = false) {
+        if(external) {
+            if(!window.location.href.includes("localhost")) {
+                this.serverAddress = "http://linfinitysmartmirror.local:1337";
+            }
+        }
+
         const cssId = 'silvertree_app_style';
         if (!document.getElementById(cssId))
         {
@@ -90,12 +96,18 @@ class Silvertree {
 
     static checkSystemPassword(password) {
         let request = new XMLHttpRequest();
-        request.open("POST", "http://localhost:1337/authenticate", false);
+        request.open("POST", this.serverAddress + "/authenticate", false);
         request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         request.send(`password=${encodeURIComponent(password)}`);
         if (request.status === 200) {
             return JSON.parse(request.responseText);
         }
         return false;
+    }
+
+    static reconnectNetwork() {
+        let request = new XMLHttpRequest();
+        request.open("GET", this.serverAddress + "/trigger_reconnect_network", false);
+        request.send(null);
     }
 }

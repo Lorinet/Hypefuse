@@ -19,14 +19,6 @@ function peekashow(element) {
     element.style.display = "block";
 }
 
-function appendHtml(element, str) {
-    let div = document.createElement('div');
-    div.innerHTML = str;
-    while (div.children.length > 0) {
-        element.appendChild(div.children[0]);
-    }
-}
-
 function addDropdown(element, title, addButton, deleteButton, addBase, content) {
     let uniq = getUID();
     let idHeader = `dropdown_${uniq}`;
@@ -153,6 +145,10 @@ function addSettingsEditor(element, configuration, bundle, baseName) {
             }
             Silvertree.setGlobalConfigurationValue(bundle, baseName, base[`key_${i}`], JSON.stringify(val));
         }
+        if(bundle === "wifi") {
+            Silvertree.reconnectNetwork();
+            Silvertree.reloadSystem();
+        }
         Silvertree.reloadDashboard();
         showConfiguration();
     };
@@ -168,12 +164,14 @@ function isUserCustomizable(bundle) {
 
 function showLogin(element) {
     let title = document.createElement("h3");
+    title.classList.add("password_title");
     title.innerText = "Enter password to unlock";
 
     let passwordInput = document.createElement("input");
     passwordInput.type = "password";
     passwordInput.placeholder = "password...";
     passwordInput.id = "password_box";
+    passwordInput.classList.add("password_box");
 
     let loginButton = document.createElement("div");
     loginButton.classList.add("save_button");
@@ -215,11 +213,14 @@ function renderConfiguration(element, configuration) {
                 };
             }
             let deleteAction = null;
-            if (bundle_config === "widgets" || bundle_config === "wifi" || godMode) {
+            if (isUserCustomizable(bundle_config) || godMode) {
                 deleteAction = function () {
                     Silvertree.deleteGlobalConfigurationBase(bundle_config, base);
                     Silvertree.reloadDashboard();
-                    if (bundle_config === "wifi") {
+                    if(isUserCustomizable(bundle_config)) {
+                        if (bundle_config === "wifi") {
+                            Silvertree.reconnectNetwork();
+                        }
                         Silvertree.reloadSystem();
                     }
                     showConfiguration();
@@ -293,8 +294,18 @@ function showConfiguration() {
     }
 }
 
+let godCounter = 0;
+
+function godBump() {
+    godCounter++;
+    if(godCounter >= 10) {
+        god();
+    }
+}
+
 function god() {
     godMode = true;
+    document.getElementById("admin_mode_label").style.display = "block";
     showConfiguration();
 }
 

@@ -23,12 +23,13 @@ use crate::get_system_state;
 use self::http::{HttpError, ParameterValue};
 
 static CONTENT_TYPES: Lazy<BTreeMap<&str, &str>> = Lazy::new(|| BTreeMap::from([
-    ("html", "text/html"),
+    ("html", "text/html; charset=utf-8"),
     ("txt", "text/plain"),
     ("ttf", "font/ttf"),
     ("ico", "image/x-icon"),
-    ("js", "text/javascript"),
+    ("js", "text/javascript; charset=utf-8"),
     ("json", "application/json"),
+    ("css", "text/css; charset=utf-8"),
 ]));
 
 pub fn run_server() -> ! {
@@ -105,7 +106,9 @@ fn handle_connection(
                 Err(error) => Err(error),
                 Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
             }
-        } else if request_type == "reload_dashboard" {
+        } else if request_type == "dashboard" {
+            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
+        }  else if request_type == "reload_dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
         } else if request_type == "trigger_reload_system" {
             get_system_state!().init();
@@ -115,6 +118,9 @@ fn handle_connection(
             success_response(&mut stream)
         } else if request_type == "trigger_reload_dashboard" {
             get_system_state!().dashboard.set_reload_requested(true);
+            success_response(&mut stream)
+        } else if request_type == "trigger_reconnect_network" {
+            get_system_state!().network_manager.set_reconnect_requested(true);
             success_response(&mut stream)
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
