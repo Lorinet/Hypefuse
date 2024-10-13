@@ -36,7 +36,7 @@
         document.getElementById('time_text').style.fontWeight = timeFontWeight;
 
         if (showDate) {
-            document.getElementById('date_text').innerHTML = `${today.toLocaleDateString("en-US", {weekday: "short"})} ${today.toLocaleDateString("en-US", {month: "short"})} ${today.toLocaleDateString("en-US", {day: "numeric"})}`;
+            document.getElementById('date_text').innerHTML = `${today.toLocaleDateString("en-US", {weekday: "short"})}, ${today.toLocaleDateString("en-US", {month: "short"})} ${today.toLocaleDateString("en-US", {day: "numeric"})}`;
             document.getElementById('date_text').style.fontWeight = dateFontWeight;
         }
 

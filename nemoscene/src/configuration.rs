@@ -161,6 +161,10 @@ impl ConfigurationBase {
         self.properties.get(key)
     }
 
+    pub fn to_json(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(serde_json::to_vec(self)?)
+    }
+
     pub fn get_json(&self, key: &str) -> Option<Vec<u8>> {
         if let Some(val) = self.get(key) {
             return serde_json::to_vec(val).ok();

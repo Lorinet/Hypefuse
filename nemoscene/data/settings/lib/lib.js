@@ -99,7 +99,11 @@ function addSetting(table, keyUID, key, value) {
     }
     valueCellInput.name = `value_${keyUID}`;
     if (value != null) {
-        valueCellInput.value = value;
+        if(Array.isArray(value)) {
+            valueCellInput.value = JSON.stringify(value);
+        } else {
+            valueCellInput.value = value;
+        }
     }
     valueCellInput.placeholder = "type here...";
     valueCellInput.classList.add("setting_box");
@@ -142,6 +146,12 @@ function addSettingsEditor(element, configuration, bundle, baseName) {
                 val = false;
             } else if (isNumeric(val)) {
                 val = parseInt(val);
+            } else {
+                try {
+                    if (Array.isArray(JSON.parse(val))) {
+                        val = JSON.parse(val);
+                    }
+                } catch {}
             }
             Silvertree.setGlobalConfigurationValue(bundle, baseName, base[`key_${i}`], JSON.stringify(val));
         }

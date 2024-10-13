@@ -1,5 +1,5 @@
 height = 150
-position_x = 500
-position_y = 300
+position_x = 20
+position_y = 20
 uuid = "clock"
 width = 200

@@ -1,0 +1,5 @@
+height = 600
+position_x = 20
+position_y = 150
+uuid = "google_calendar"
+width = 300

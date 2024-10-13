@@ -23,12 +23,34 @@ class Silvertree {
         this.uuid = uuid;
     }
 
-    static getConfigurationValue(base, key) {
+    static requestSync(method, url, body) {
         let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/config_get?uuid=" + encodeURIComponent(this.uuid) + "&base=" + encodeURIComponent(base) + "&key=" + encodeURIComponent(key), false);
-        request.send(null);
+        request.open("GET", url, false);
+        if(method === "POST") {
+            request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        }
+        request.send(body);
         if(request.status === 200) {
-            return JSON.parse(request.responseText);
+            return request.responseText;
+        } else {
+            document.getElementById("err").innerText += request.statusText + request.responseText;
+            return null;
+        }
+    }
+
+    static getConfigurationValue(base, key) {
+        let response = this.requestSync("GET", this.serverAddress + "/config_get?uuid=" + encodeURIComponent(this.uuid) + "&base=" + encodeURIComponent(base) + "&key=" + encodeURIComponent(key), null);
+        if (response !== null) {
+            return JSON.parse(response);
+        } else {
+            return false;
+        }
+    }
+
+    static getConfigurationBase(base) {
+        let response = this.requestSync("GET", this.serverAddress + "/config_get_base?uuid=" + encodeURIComponent(this.uuid) + "&base=" + encodeURIComponent(base), null);
+        if (response !== null) {
+            return JSON.parse(response);
         } else {
             return false;
         }
@@ -39,75 +61,57 @@ class Silvertree {
     }
 
     static setGlobalConfigurationValue(bundle, base, key, value) {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/config_set?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base) + "&key=" + encodeURIComponent(key) + "&value=" + encodeURIComponent(value), false);
-        request.send(null);
-        if(request.status === 200) {
-            return true;
-        } else {
-            return false;
-        }
+        let response = this.requestSync("GET", this.serverAddress + "/config_set?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base) + "&key=" + encodeURIComponent(key) + "&value=" + encodeURIComponent(value), null);
+        return response !== null;
     }
 
     static getGlobalConfiguration() {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/config_all", false);
-        request.send(null);
-        if(request.status === 200) {
-            return JSON.parse(request.responseText);
+        let response = this.requestSync("GET", this.serverAddress + "/config_all", null);
+        if (response !== null) {
+            return JSON.parse(response);
         } else {
             return false;
         }
     }
 
     static createGlobalConfigurationBase(bundle, base) {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/config_create_base?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base), false);
-        request.send(null);
-        if(request.status === 200) {
-            return true;
-        } else {
-            return false;
-        }
+        let response = this.requestSync("GET", this.serverAddress + "/config_create_base?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base), null);
+        return response !== null;
     }
 
     static deleteGlobalConfigurationBase(bundle, base) {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/config_delete_base?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base), false);
-        request.send(null);
-        if(request.status === 200) {
-            return true;
+        let response = this.requestSync("GET", this.serverAddress + "/config_delete_base?uuid=" + encodeURIComponent(bundle) + "&base=" + encodeURIComponent(base), null);
+        return response !== null;
+    }
+
+    static reloadDashboard() {
+        this.requestSync("GET", this.serverAddress + "/trigger_reload_dashboard", null);
+    }
+
+    static reloadSystem() {
+        this.requestSync("GET", this.serverAddress + "/trigger_reload_system", null);
+    }
+
+    static checkSystemPassword(password) {
+        let response = this.requestSync("POST", this.serverAddress + "/authenticate", `password=${encodeURIComponent(password)}`, null);
+        if (response !== null) {
+            return JSON.parse(response);
         } else {
             return false;
         }
     }
 
-    static reloadDashboard() {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/trigger_reload_dashboard", false);
-        request.send(null);
-    }
-
-    static reloadSystem() {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/trigger_reload_system", false);
-        request.send(null);
-    }
-
-    static checkSystemPassword(password) {
-        let request = new XMLHttpRequest();
-        request.open("POST", this.serverAddress + "/authenticate", false);
-        request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        request.send(`password=${encodeURIComponent(password)}`);
-        if (request.status === 200) {
-            return JSON.parse(request.responseText);
-        }
-        return false;
-    }
-
     static reconnectNetwork() {
-        let request = new XMLHttpRequest();
-        request.open("GET", this.serverAddress + "/trigger_reconnect_network", false);
-        request.send(null);
+        this.requestSync("GET", this.serverAddress + "/trigger_reconnect_network", null);
     }
+
+    static proxyGet(url) {
+        return this.requestSync("GET", this.serverAddress + "/proxy?url=" + encodeURIComponent(url), null);
+    }
+
+    static getBundlePath() {
+        return this.serverAddress + "/bundle/" + this.uuid;
+    }
+
+
 }

@@ -1,55 +1,286 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="http://linfinitysmartmirror.local:1337/bundle/silvertree/lib/lib.js"></script>
-    <script src="http://linfinitysmartmirror.local:1337/bundle/google_calendar/lib/ical.min.js"></script>
-</head>
-<body>
-<p>Calendar</p>
-<div id="calendar_container"></div>
-
-<script type="text/javascript">
-    Silvertree.serverAddress = "http://linfinitysmartmirror.local:1337";
-    Silvertree.initFramework("google_calendar");
-
-    function getRequest(url, params) {
-        let request = new XMLHttpRequest();
-        var reqUri = url;
-
-        var i = 0;
-        for (const [key, value] of Object.entries(params)) {
-            if(i === 0) {
-                reqUri += "?";
-            } else {
-                reqUri += "&";
-            }
-
-            reqUri += encodeURIComponent(key);
-            reqUri += "=";
-            reqUri += encodeURIComponent(value);
-
-            i++;
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1"/>-->
+    <script src="http://localhost:1337/bundle/silvertree/lib/lib.js"></script>
+    <script src="http://localhost:1337/bundle/google_calendar/lib/ical.es5.min.cjs"></script>
+    <style>
+        .event_table {
+            display: flex;
         }
 
-        request.open("GET", reqUri, false);
-        request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        request.send(null);
-        if(request.status === 200) {
-            return request.responseText;
-        } else {
-            return false;
+        .title_table {
+            display: inline;
+            font-weight: 600;
+            flex: 1;
+            white-space: nowrap;
+            min-width: 0;
+            overflow: hidden;
+            vertical-align: middle;
+        }
+
+        .time_table {
+            display: inline;
+            flex: 0 0 auto;
+        }
+
+        .date_table {
+            display: inline;
+            float: right;
+            font-weight: 200;
+        }
+
+        .hour_table {
+            display: inline;
+            float: right;
+            font-weight: 700;
+        }
+
+        .event_tiles {
+            padding-bottom: 14px;
+        }
+
+        .title_tiles {
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 300;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            vertical-align: top;
+            text-wrap: balance;
+            width: 100%;
+        }
+
+        .time_tiles {
+            display: block;
+            line-height: 0.9;
+            font-weight: 500;
+            color: #777;
+        }
+
+        .date_tiles {
+            display: inline;
+        }
+
+        .hour_tiles {
+            display: inline;
+        }
+
+        .date_icon_container_table {
+            display: inline-block;
+            position: relative;
+            margin-right: 6px;
+            vertical-align: middle;
+            filter: brightness(75%);
+        }
+
+        .date_icon_image_table {
+            object-fit: fill;
+        }
+
+        .date_icon_label_table {
+            position: absolute;
+            font-weight: 700;
+            top: 60%;
+            left: 50%;
+            color: #cfb8ff;
+            transform: translate(-50%, -50%);
+        }
+
+        .date_icon_container_tiles {
+            display: inline-block;
+            position: relative;
+            margin-top: 1px;
+            margin-right: 6px;
+            vertical-align: top;
+            filter: brightness(75%);
+        }
+
+        .date_icon_image_tiles {
+            object-fit: fill;
+        }
+
+        .date_icon_label_tiles {
+            position: absolute;
+            font-weight: 700;
+            top: 70%;
+            left: 50%;
+            color: #be8fff;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+<div class="silvertree_title_bar">
+    Upcoming events
+</div>
+<div id="calendar_container"></div>
+
+<script>
+    class CalendarEvent {
+        constructor(vevent) {
+            this.title = vevent.getFirstPropertyValue("summary");
+            this.startTime = vevent.getFirstPropertyValue("dtstart").toJSDate();
+            this.endTime = vevent.getFirstPropertyValue("dtend").toJSDate();
         }
     }
 
-    var calLink = Silvertree.getConfigurationValue("calendars", "private");
-    fetch(calLink, { mode: 'no-cors'}).then((value) => {
-        alert("Got respo");
-        value.text().then((text) => {
-            alert(text);
-            document.getElementById("calendar_container").innerHTML = text;
-        })
-    });
+    let list = [];
 
+    Silvertree.initFramework("google_calendar");
+
+    let titleFontSize = Silvertree.getConfigurationValue("settings", "title_font_size");
+    let detailsFontSize = Silvertree.getConfigurationValue("settings", "details_font_size");
+    let period = Silvertree.getConfigurationValue("settings", "period");
+    let layout = Silvertree.getConfigurationValue("settings", "layout");
+    let numOfEvents = Silvertree.getConfigurationValue("settings", "count");
+    let calLinks = Silvertree.getConfigurationValue("settings", "calendars");
+
+    function createDateIcon(day) {
+        let container = document.createElement("div");
+        let size = parseInt(titleFontSize.substring(0, titleFontSize.length - 2));
+        let calendarLabelSize = size / 1.8;
+        size += "px";
+        container.style.width = size;
+        container.style.height = size;
+        let image = document.createElement("object");
+        image.data = Silvertree.getBundlePath() + "/lib/event.svg";
+        image.width = size;
+        image.height = size;
+        let label = document.createElement("div");
+        label.style.fontSize = calendarLabelSize + "px";
+        label.innerText = day;
+        if(layout === "table") {
+            container.classList.add("date_icon_container_table");
+            image.classList.add("date_icon_image_table");
+            label.classList.add("date_icon_label_table");
+        } else if (layout === "tiles") {
+            container.classList.add("date_icon_container_tiles");
+            image.classList.add("date_icon_image_tiles");
+            label.classList.add("date_icon_label_tiles");
+        }
+        container.appendChild(image);
+        container.appendChild(label);
+        return container;
+    }
+
+    for (let calLink in calLinks) {
+        let ical = ICAL.parse(Silvertree.proxyGet(calLinks[calLink]));
+
+        let comp = new ICAL.Component(ical);
+        let vevts = comp.getAllSubcomponents("vevent");
+
+        for (let ve in vevts) {
+            let present = new Date();
+            let future = new Date();
+
+            future.setDate(future.getDate() + period);
+            let rangeStart = ICAL.Time.fromJSDate(present);
+            let rangeEnd = ICAL.Time.fromJSDate(future);
+
+            if (vevts[ve].getFirstPropertyValue("rrule") == null) {
+                if (vevts[ve].getFirstPropertyValue("dtstart").compare(rangeStart) >= 0 && vevts[ve].getFirstPropertyValue("dtend").compare(rangeEnd) <= 0) {
+                    list.push(new CalendarEvent(vevts[ve]));
+                }
+            } else {
+                let iterator = new ICAL.RecurExpansion({
+                    component: vevts[ve],
+                    dtstart: vevts[ve].getFirstPropertyValue('dtstart')
+                });
+                let next = iterator.next()
+                for (let next = iterator.next(); next && next.compare(rangeEnd) < 0; next = iterator.next()) {
+                    if (next.compare(rangeStart) < 0) {
+                        continue;
+                    }
+                    let cev = new CalendarEvent(vevts[ve]);
+                    cev.startTime = next.toJSDate();
+                    list.push(cev);
+                }
+            }
+
+        }
+    }
+
+    for (let i = 0; i < list.length - 1; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+            if (list[i].startTime > list[j].startTime) {
+                let a = list[i];
+                list[i] = list[j];
+                list[j] = a;
+            }
+        }
+    }
+
+    list = list.slice(0, numOfEvents);
+
+    for (let event in list) {
+        let element = document.createElement("div");
+        let title = document.createElement("div");
+        title.style.fontSize = titleFontSize;
+        let time = document.createElement("div");
+        let date = document.createElement("div");
+        date.style.fontSize = detailsFontSize;
+        let hour = document.createElement("div");
+        hour.style.fontSize = detailsFontSize;
+        let title_text = document.createElement("span");
+        title_text.innerText = list[event].title;
+        let tm = list[event].startTime;
+        if (tm.getHours() !== 0 || tm.getMinutes() !== 0) {
+            hour.innerText = "\u00A0at " + tm.toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            });
+        }
+        const diffTime = Math.abs(tm - (new Date()));
+        const diff = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diff === 0) {
+            date.innerText = "Today";
+        } else if (diff === 1) {
+            date.innerText = "Tomorrow";
+        } else if (diff === 2) {
+            date.innerText = "After tomorrow";
+        } else if (diff < 7) {
+            date.innerText = "On " + tm.toLocaleString("en-US", {weekday: "long"});
+        } else {
+            date.innerText = tm.toLocaleString("en-US", {weekday: "short", day: "2-digit", month: "short"});
+        }
+
+        if (layout === "table") {
+            element.classList.add("event_table");
+            title.appendChild(createDateIcon(tm.getDate(), "table"));
+            title_text.classList.add("title_table");
+            title.appendChild(title_text);
+            title.classList.add("title_table");
+            time.classList.add("time_table");
+            date.classList.add("date_table");
+            hour.classList.add("hour_table");
+            element.appendChild(title);
+            time.appendChild(hour);
+            time.appendChild(date);
+            element.appendChild(time);
+        } else if (layout === "tiles") {
+            element.classList.add("event_tiles");
+            element.appendChild(createDateIcon(tm.getDate(), "tiles"));
+            title_text.classList.add("title_tiles");
+            title.appendChild(title_text);
+            title.classList.add("title_tiles");
+            title.style.maxWidth = (window.innerWidth - 38) + "px";
+            time.classList.add("time_tiles");
+            date.classList.add("date_tiles");
+            hour.classList.add("hour_tiles");
+            let tile = document.createElement("div");
+            tile.style.display = "inline-block";
+            tile.appendChild(title);
+            time.appendChild(date);
+            time.appendChild(hour);
+            tile.appendChild(time);
+            element.appendChild(tile);
+        }
+
+        document.getElementById("calendar_container").appendChild(element);
+    }
 
 </script>
 </body>

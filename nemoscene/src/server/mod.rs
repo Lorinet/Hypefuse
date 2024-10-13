@@ -91,6 +91,11 @@ fn handle_connection(
                 Err(error) => Err(error),
                 Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
             }
+        } else if request_type == "config_get_base" {
+            match serve_config_get_base(request.get) {
+                Err(error) => Err(error),
+                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+            }
         } else if request_type == "config_create_base" {
             match serve_config_create_base(request.get) {
                 Err(error) => Err(error),
@@ -108,7 +113,7 @@ fn handle_connection(
             }
         } else if request_type == "dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
-        }  else if request_type == "reload_dashboard" {
+        } else if request_type == "reload_dashboard" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
         } else if request_type == "trigger_reload_system" {
             get_system_state!().init();
@@ -122,6 +127,20 @@ fn handle_connection(
         } else if request_type == "trigger_reconnect_network" {
             get_system_state!().network_manager.set_reconnect_requested(true);
             success_response(&mut stream)
+        } else if request_type == "proxy" {
+            if let Some(get) = request.get {
+                if let Some(url) = get.get("url") {
+                    if let Ok(url) = url.as_string() {
+                        proxy_request(&mut stream, url.as_str())
+                    } else {
+                        Err(anyhow!("Invalid GET field: url"))
+                    }
+                } else {
+                    Err(anyhow!("Missing required GET field: url"))
+                }
+            } else {
+                Err(anyhow!("Missing required GET field: url"))
+            }
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
         } else if request_type == "" {
@@ -208,6 +227,22 @@ fn serve_config_create_base(get: Option<HashMap<String, ParameterValue>>) -> any
     }
 }
 
+fn serve_config_get_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
+    if let Some(get) = get {
+        if let (Some(uuid), Some(base)) = (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+            if let Some(base) = get_system_state!().configuration.get_base_of_bundle(uuid.as_str(), base.as_str()) {
+                base.to_json()
+            } else {
+                Err(anyhow!("Invalid configuration base: {}", base))
+            }
+        } else {
+            Err(anyhow!("Invalid request"))
+        }
+    } else {
+        Err(anyhow!("Invalid request"))
+    }
+}
+
 fn serve_config_delete_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
     if let Some(get) = get {
         if let (Some(uuid), Some(base)) =
@@ -246,6 +281,14 @@ fn serve_file(
     let content = fs::read(path)?;
     let content_type = String::from(*CONTENT_TYPES.get(extension.as_str()).unwrap_or(&"txt"));
     Ok((content_type, content))
+}
+
+fn proxy_request(stream: &mut TcpStream, url: &str) -> anyhow::Result<()> {
+    let mut buffer = Vec::new();
+    let response = http_req::request::get(url, &mut buffer)?;
+    let http = format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\nAccess-Control-Allow-Origin: *\r\n\r\n{}", buffer.len(), unsafe { std::str::from_utf8_unchecked(buffer.as_slice()) });
+    stream.write_all(http.as_bytes())?;
+    Ok(())
 }
 
 fn error_response(stream: &mut TcpStream, message: String, backtrace: Option<String>) -> anyhow::Result<()> {

@@ -1,0 +1,6 @@
+period = 100
+count = 10
+title_font_size = "14px"
+details_font_size = "11px"
+layout = "tiles"
+calendars = ["https://calendar.google.com/calendar/ical/lorinet3%40gmail.com/private-442cd13b48d7056198a476661d42213b/basic.ics"]
