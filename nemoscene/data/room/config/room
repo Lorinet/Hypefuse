@@ -1,0 +1,6 @@
+snap = "end"
+number_font_weight = 500
+show_temperature = true
+temperature_font_size = "28px"
+show_humidity = true
+humidity_font_size = "16px"

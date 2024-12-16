@@ -5,8 +5,10 @@ use once_cell::sync::Lazy;
 use crate::app::manager::AppManager;
 use crate::configuration::ConfigurationRegistry;
 use crate::dashboard::{Dashboard, Point};
+use crate::devices::DeviceManager;
 use crate::network::NetworkManager;
 use crate::server::run_server;
+use crate::services::ServiceManager;
 
 pub static SYSTEM_STATE: Lazy<Arc<Mutex<SystemState>>> = Lazy::new(|| {
     let mut system_state = SystemState {
@@ -14,6 +16,8 @@ pub static SYSTEM_STATE: Lazy<Arc<Mutex<SystemState>>> = Lazy::new(|| {
         dashboard: Dashboard::new(),
         app_manager: AppManager::new(),
         network_manager: NetworkManager::new(),
+        device_manager: DeviceManager::new(),
+        service_manager: ServiceManager::new(),
     };
     system_state.init();
     Arc::new(Mutex::new(system_state))
@@ -31,6 +35,8 @@ pub struct SystemState {
     pub dashboard: Dashboard,
     pub app_manager: AppManager,
     pub network_manager: NetworkManager,
+    pub device_manager: DeviceManager,
+    pub service_manager: ServiceManager,
 }
 
 impl SystemState {
@@ -39,7 +45,9 @@ impl SystemState {
         self.configuration.init();
         self.app_manager.init(&mut self.configuration);
         self.dashboard.init(&self.configuration);
-        self.network_manager.init(&self.configuration);
+        //self.network_manager.init(&self.configuration);
+        self.device_manager.init(&self.configuration);
+        self.service_manager.init(&self.configuration);
     }
 
     pub fn shutdown() -> ! {

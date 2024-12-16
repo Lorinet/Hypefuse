@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        div {
+            line-height: 1.1;
+        }
+    </style>
+</head>
+<body onload="room()">
+<div style="visibility: collapse;" id="temperature_display"><span id="temperature_text"></span><span style="font-weight: 200;">&nbsp;°C</span></div>
+<div style="visibility: collapse;" id="humidity_display"><span style="font-weight: 200;">💦&nbsp;</span><span id="humidity_text"></span></div>
+</body>
+<script src="http://localhost:1337/bundle/silvertree/lib/lib.js"></script>
+<script>
+    Silvertree.initFramework("room");
+
+    let snap = Silvertree.getConfigurationValue("room", "snap");
+    let numberFontWeight = Silvertree.getConfigurationValue("room", "number_font_weight");
+    let showTemperature = Silvertree.getConfigurationValue("room", "show_temperature");
+    let showHumidity = Silvertree.getConfigurationValue("room", "show_humidity");
+    let temperatureFontSize = Silvertree.getConfigurationValue("room", "temperature_font_size");
+    let humidityFontSize = Silvertree.getConfigurationValue("room", "humidity_font_size");
+
+    function room() {
+        let temp = parseFloat(Silvertree.deviceRequest("SHT21", "temperature", null));
+        let hum = parseFloat(Silvertree.deviceRequest("SHT21", "humidity", null));
+
+        document.body.style.textAlign = snap;
+
+        if(showTemperature) {
+            let tempcol = "white";
+            if(temp < 19) tempcol = "lightskyblue";
+            else if(temp > 22) tempcol = "salmon";
+            document.getElementById('temperature_text').innerHTML = temp.toFixed(1);
+            document.getElementById('temperature_display').style.visibility = "visible";
+            document.getElementById('temperature_display').style.fontSize = temperatureFontSize;
+            document.getElementById('temperature_text').style.fontWeight = numberFontWeight;
+            document.getElementById('temperature_text').style.color = tempcol;
+        }
+
+        if (showHumidity) {
+            let humcol = "white";
+            if(hum < 30) humcol = "khaki";
+            else if(hum > 60) humcol = "lightskyblue";
+            document.getElementById('humidity_text').innerHTML = hum.toFixed(1) + "%";
+            document.getElementById('humidity_display').style.visibility = "visible";
+            document.getElementById('humidity_display').style.fontSize = humidityFontSize;
+            document.getElementById('humidity_text').style.fontWeight = numberFontWeight;
+            document.getElementById('humidity_text').style.color = humcol;
+        }
+
+        setTimeout(room, 10000);
+    }
+
+</script>
+</html>

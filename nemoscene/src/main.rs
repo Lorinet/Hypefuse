@@ -12,9 +12,11 @@ mod configuration;
 mod dashboard;
 mod app;
 mod network;
+mod devices;
+mod services;
 
 fn main() {
-
+    env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_LOG", "info");
     env_logger::init();
     info!("Hypefuse [Nemoscene Version 0.1]");

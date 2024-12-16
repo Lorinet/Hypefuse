@@ -38,6 +38,10 @@ class Silvertree {
         }
     }
 
+    static deviceRequest(device, command, parameters) {
+        return this.requestSync("POST", this.serverAddress + `/device?device=${device}&command=${command}`, parameters);
+    }
+
     static getConfigurationValue(base, key) {
         let response = this.requestSync("GET", this.serverAddress + "/config_get?uuid=" + encodeURIComponent(this.uuid) + "&base=" + encodeURIComponent(base) + "&key=" + encodeURIComponent(key), null);
         if (response !== null) {

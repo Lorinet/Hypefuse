@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::PathBuf;
 use anyhow::anyhow;
-use crate::get_system_state;
+use crate::{devices, get_system_state};
 
 use self::http::{HttpError, ParameterValue};
 
@@ -141,6 +141,11 @@ fn handle_connection(
             } else {
                 Err(anyhow!("Missing required GET field: url"))
             }
+        } else if request_type == "device" {
+            match serve_device(request.get, request.post) {
+                Err(error) => Err(error),
+                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+            }
         } else if request_type == "favicon.ico" {
             respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
         } else if request_type == "" {
@@ -240,6 +245,26 @@ fn serve_config_get_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow
         }
     } else {
         Err(anyhow!("Invalid request"))
+    }
+}
+
+fn serve_device(get: Option<HashMap<String, ParameterValue>>, post: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
+    if let Some(get) = get {
+        if let (Some(device), Some(command)) = (get.get("device").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("command").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+            let parameter_map = if let Some(post) = post {
+                post.iter().map(|(k, v)| (k.to_string(), serde_json::from_str::<devices::Value>(v.as_string().unwrap_or(&String::new())).unwrap_or(devices::Value::String(String::new())))).collect::<BTreeMap<String, devices::Value>>()
+            } else {
+                BTreeMap::new()
+            };
+            match get_system_state!().device_manager.command(&device, &command, &parameter_map) {
+                Ok(val) => Ok(serde_json::to_string(&val)?.into_bytes()),
+                Err(msg) => Err(anyhow!("{}", msg)),
+            }
+        } else {
+            Err(anyhow!("Invalid request no device command"))
+        }
+    } else {
+        Err(anyhow!("Invalid request no get post"))
     }
 }
 
