@@ -25,7 +25,7 @@ class Silvertree {
 
     static requestSync(method, url, body) {
         let request = new XMLHttpRequest();
-        request.open("GET", url, false);
+        request.open(method, url, false);
         if(method === "POST") {
             request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         }

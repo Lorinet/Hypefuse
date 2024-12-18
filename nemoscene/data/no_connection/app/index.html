@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        div {
+            text-align: center;
+            padding: 60px;
+        }
+    </style>
+</head>
+<body onload="check_connection()">
+<div>
+    <h1>Not connected</h1>
+    <ul>
+        <li>Connect to <u>LinfinitySmartMirror</u> hotspot</li>
+        <li>Visit <u>http://linfinitysmartmirror.local:1337</u></li>
+        <li>Configure Wi-Fi and save settings to connect</li>
+    </ul>
+</div>
+</body>
+<script src="http://localhost:1337/bundle/silvertree/lib/lib.js"></script>
+<script>
+    Silvertree.initFramework("no_connection");
+
+    function reloadWhenRequested() {
+        try {
+            let request = new XMLHttpRequest();
+            request.open("GET", "http://localhost:1337/reload_dashboard", false);
+            request.send(null);
+            if (request.status === 200) {
+                if (JSON.parse(request.responseText)) {
+                    window.location.reload();
+                }
+            }
+        } catch (e) {
+            console.log(e);
+        }
+        setTimeout(reloadWhenRequested, 10000);
+    }
+
+    reloadWhenRequested();
+</script>
+</html>

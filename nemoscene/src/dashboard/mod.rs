@@ -149,4 +149,33 @@ impl Dashboard {
             </html>
         )
     }
+
+    pub fn serve_no_connection(&mut self) -> String {
+        self.set_reload_requested(false);
+        html!(
+            "<!DOCTYPE html>"
+            <html>
+                <head>
+                    <title>"Hypefuse Dashboard"</title>
+                <style>
+                { include_str!("dashboard_style.css") }
+                </style>
+                <script>
+                { include_str!("dashboard_script.js") }
+                </script>
+                <link rel="stylesheet" href="http://localhost:1337/bundle/silvertree/lib/silvertree_app.css"></link>
+                </head>
+                <body>
+                    <div style="text-align: center; margin-top: 200px; padding: 100px;">
+                        <h1>"Not connected"</h1>
+                        <ul style="text-align: left;">
+                            <li>"Connect to "<u>"LinfinitySmartMirror"</u>" hotspot"</li>
+                            <li>"Visit "<u>"http://linfinitysmartmirror.local"</u></li>
+                            <li>"Configure Wi-Fi and save settings to connect"</li>
+                        </ul>
+                    </div>
+                </body>
+            </html>
+        )
+    }
 }

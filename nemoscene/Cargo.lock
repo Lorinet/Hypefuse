@@ -1039,6 +1039,7 @@ dependencies = [
  "log",
  "once_cell",
  "openssl-sys",
+ "pocketsphinx",
  "reqwest",
  "rppal",
  "serde",
@@ -1175,6 +1176,26 @@ name = "pkg-config"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
+
+[[package]]
+name = "pocketsphinx"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fbfed8e8fff3197805e97b0e35f72263f02bd5a55646df5470b5c59d8ce6bd2"
+dependencies = [
+ "libc",
+ "pocketsphinx-sys",
+]
+
+[[package]]
+name = "pocketsphinx-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34367c1e1c21caec7f9e798d966868b0550c17b33f744eaec8c1ae876f601132"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "portable-atomic"

@@ -15,7 +15,6 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 lazy_static! {
     static ref WHISPER: WhisperContext =
         WhisperContext::new_from_buffer_with_params(include_bytes!("ggml_tiny.bin"), WhisperContextParameters::default()).unwrap();
-    static ref FASTER_WHISPER: WhisperModel = WhisperModel::new("tiny_en".to_string(), "cpu".to_string(), "int8".to_string(), WhisperConfig::default()).unwrap();
 }
 
 pub struct Gemini;
@@ -110,10 +109,6 @@ impl Device for Gemini {
 
                     info!("Prompt: {:?}", Self::audio_to_text(recording.as_slice()));
                 });
-                /*cmd = Command::new("pw-play").arg("-").env("XDG_RUNTIME_DIR", "/run/user/1000").stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
-                let stdin = cmd.stdin.as_mut().unwrap();
-                stdin.write_all(RECORD_OFF_SOUND)?;
-                cmd.wait()?;*/
 
                 Ok(Value::Bool(true))
             }
@@ -124,27 +119,9 @@ impl Device for Gemini {
 
 impl Gemini {
     fn audio_to_text(audio_data: &[i16]) -> anyhow::Result<String> {
-        let params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        let params = FullParams::new(SamplingStrategy::BeamSearch { beam_size: 1, patience: 1.0 });
+        let audio_data = wav_io::convert_samples_i16_to_f32(&audio_data.to_vec());
 
-        //let audio_data = wav_io::convert_samples_i16_to_f32(&audio_data.to_vec());
-        let filename = format!(
-            "/tmp/voice{}.wav",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_secs()
-        );
-        let head = wav_io::new_header(16000, 16, false, true);
-        let mut file_out = File::create(&filename)?;
-        wav_io::write_to_file(
-            &mut file_out,
-            &head,
-            &wav_io::convert_samples_i16_to_f32(&audio_data.to_vec()),
-        )?;
-
-        let tr = FASTER_WHISPER.transcribe(filename).unwrap().to_string();
-        return Ok(tr);
-/*
         let mut state = WHISPER.create_state()?;
         state.full(params, &audio_data[..])?;
 
@@ -154,7 +131,7 @@ impl Gemini {
             let segment = state.full_get_segment_text(i)?;
             text += segment.as_str();
         }
-        Ok(text)*/
+        Ok(text)
         /* let filename = format!(
             "/tmp/voice{}.wav",
             SystemTime::now()

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::net::{TcpStream, UdpSocket};
 use std::process::Command;
 use std::thread;
 use anyhow::anyhow;
@@ -39,7 +40,14 @@ impl NetworkManager {
 
     pub fn connect_all(&self) {
         let list = self.connections.clone();
-        thread::spawn(move || {
+        if list.len() == 0 {
+            if let Err(error) = Self::hotspot() {
+                error!("Could not activate hotspot: {}", error);
+            } else {
+                info!("Activated hotspot");
+            }
+        }
+        //thread::spawn(move || {
             for (name, password) in list {
                 if let Err(error) = Self::connect(name.as_str(), password.as_str()) {
                     error!("Network connection error: {}", error);
@@ -51,7 +59,7 @@ impl NetworkManager {
             if let Err(error) = Self::avahi() {
                 error!("Avahi-daemon error: {}", error);
             }
-        });
+       // });
     }
 
     fn avahi() -> anyhow::Result<()> {
@@ -91,6 +99,13 @@ impl NetworkManager {
             .status()?;
         info!("NetworkManager exit code: {}", status);
         Ok(())
+    }
+
+    pub fn is_internet_connected(&self) -> bool {
+        match TcpStream::connect("8.8.8.8:53") {
+            Ok(_) => true,
+            Err(_) => false,
+        }
     }
 
     pub fn set_reconnect_requested(&mut self, reconnect: bool) {

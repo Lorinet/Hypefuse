@@ -1,9 +1,14 @@
 pub mod http;
 pub mod threadpool;
 
+use crate::{devices, get_system_state};
+use anyhow::anyhow;
 use html_to_string_macro::*;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::path::PathBuf;
 use std::{
     collections::HashMap,
     error::Error,
@@ -14,23 +19,20 @@ use std::{
     thread,
     time::Duration,
 };
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::path::PathBuf;
-use anyhow::anyhow;
-use crate::{devices, get_system_state};
 
 use self::http::{HttpError, ParameterValue};
 
-static CONTENT_TYPES: Lazy<BTreeMap<&str, &str>> = Lazy::new(|| BTreeMap::from([
-    ("html", "text/html; charset=utf-8"),
-    ("txt", "text/plain"),
-    ("ttf", "font/ttf"),
-    ("ico", "image/x-icon"),
-    ("js", "text/javascript; charset=utf-8"),
-    ("json", "application/json"),
-    ("css", "text/css; charset=utf-8"),
-]));
+static CONTENT_TYPES: Lazy<BTreeMap<&str, &str>> = Lazy::new(|| {
+    BTreeMap::from([
+        ("html", "text/html; charset=utf-8"),
+        ("txt", "text/plain"),
+        ("ttf", "font/ttf"),
+        ("ico", "image/x-icon"),
+        ("js", "text/javascript; charset=utf-8"),
+        ("json", "application/json"),
+        ("css", "text/css; charset=utf-8"),
+    ])
+});
 
 pub fn run_server() -> ! {
     info!("Starting Hypefuse system server...");
@@ -53,9 +55,7 @@ pub fn run_server() -> ! {
     }
 }
 
-fn handle_connection(
-    mut stream: TcpStream,
-) -> anyhow::Result<()> {
+fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
     let request = http::HttpRequest::read_from_stream(&stream)?;
     //info!("Read request: {:#?}", request);
     let mut parts = request.route.split('/');
@@ -63,15 +63,13 @@ fn handle_connection(
     let result = if let Ok(request_type) = parts.next().ok_or(anyhow!("Invalid request")) {
         if request_type == "bundle" {
             if let Some(uuid) = parts.next() {
-                let route = parts.map(|s| s.to_string()).collect::<Vec<String>>().join("/");
-                match serve_file(
-                    uuid,
-                    route.as_str(),
-                    request.get,
-                    request.post,
-                ) {
+                let route = parts
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>()
+                    .join("/");
+                match serve_file(uuid, route.as_str(), request.get, request.post) {
                     Err(error) => Err(error),
-                    Ok((content_type, content)) => respond(&mut stream, 200, content_type, content)
+                    Ok((content_type, content)) => respond(&mut stream, 200, content_type, content),
                 }
             } else {
                 Err(anyhow!("Invalid request"))
@@ -79,42 +77,97 @@ fn handle_connection(
         } else if request_type == "config_get" {
             match serve_config_get(request.get) {
                 Err(error) => Err(error),
-                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+                Ok(content) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    content,
+                ),
             }
         } else if request_type == "config_all" {
             match get_system_state!().configuration.get_json() {
                 Err(error) => Err(error),
-                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+                Ok(content) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    content,
+                ),
             }
         } else if request_type == "config_set" {
             match serve_config_set(request.get) {
                 Err(error) => Err(error),
-                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
+                Ok(_) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    vec![],
+                ),
             }
         } else if request_type == "config_get_base" {
             match serve_config_get_base(request.get) {
                 Err(error) => Err(error),
-                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+                Ok(content) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    content,
+                ),
             }
         } else if request_type == "config_create_base" {
             match serve_config_create_base(request.get) {
                 Err(error) => Err(error),
-                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
+                Ok(_) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    vec![],
+                ),
             }
         } else if request_type == "config_delete_base" {
             match serve_config_delete_base(request.get) {
                 Err(error) => Err(error),
-                Ok(_) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![]),
+                Ok(_) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    vec![],
+                ),
             }
         } else if request_type == "authenticate" {
             match serve_authenticate(request.post) {
                 Err(error) => Err(error),
-                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+                Ok(content) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    content,
+                ),
             }
         } else if request_type == "dashboard" {
-            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("html").unwrap()), get_system_state!().dashboard.serve().into_bytes())
+            let con = get_system_state!().network_manager.is_internet_connected();
+            respond(
+                &mut stream,
+                200,
+                String::from(*CONTENT_TYPES.get("html").unwrap()),
+                if con {
+                    get_system_state!().dashboard.serve()
+                } else {
+                    get_system_state!().dashboard.serve_no_connection()
+                }
+                .into_bytes(),
+            )
         } else if request_type == "reload_dashboard" {
-            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), get_system_state!().dashboard.get_reload_requested().to_string().into_bytes())
+            respond(
+                &mut stream,
+                200,
+                String::from(*CONTENT_TYPES.get("json").unwrap()),
+                get_system_state!()
+                    .dashboard
+                    .get_reload_requested()
+                    .to_string()
+                    .into_bytes(),
+            )
         } else if request_type == "trigger_reload_system" {
             get_system_state!().init();
             success_response(&mut stream)
@@ -125,7 +178,9 @@ fn handle_connection(
             get_system_state!().dashboard.set_reload_requested(true);
             success_response(&mut stream)
         } else if request_type == "trigger_reconnect_network" {
-            get_system_state!().network_manager.set_reconnect_requested(true);
+            get_system_state!()
+                .network_manager
+                .set_reconnect_requested(true);
             success_response(&mut stream)
         } else if request_type == "proxy" {
             if let Some(get) = request.get {
@@ -144,12 +199,27 @@ fn handle_connection(
         } else if request_type == "device" {
             match serve_device(request.get, request.post) {
                 Err(error) => Err(error),
-                Ok(content) => respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), content),
+                Ok(content) => respond(
+                    &mut stream,
+                    200,
+                    String::from(*CONTENT_TYPES.get("json").unwrap()),
+                    content,
+                ),
             }
         } else if request_type == "favicon.ico" {
-            respond(&mut stream, 200, String::from(*CONTENT_TYPES.get("ico").unwrap()), Vec::new())
+            respond(
+                &mut stream,
+                200,
+                String::from(*CONTENT_TYPES.get("ico").unwrap()),
+                Vec::new(),
+            )
         } else if request_type == "" {
-            respond(&mut stream, 307, String::new(), "/bundle/settings".as_bytes().to_vec())
+            respond(
+                &mut stream,
+                307,
+                String::new(),
+                "/bundle/settings".as_bytes().to_vec(),
+            )
         } else {
             Err(anyhow!("Invalid request type: {}", request_type))
         }
@@ -157,7 +227,11 @@ fn handle_connection(
         Err(anyhow!("Invalid request"))
     };
     if let Err(error) = result {
-        error_response(&mut stream, error.to_string(), Some(error.backtrace().to_string()))
+        error_response(
+            &mut stream,
+            error.to_string(),
+            Some(error.backtrace().to_string()),
+        )
     } else {
         Ok(())
     }
@@ -165,8 +239,17 @@ fn handle_connection(
 
 fn serve_authenticate(post: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
     if let Some(post) = post {
-        if let Some(password) = post.get("password").map(|v| v.as_string().cloned().unwrap_or(String::new())) {
-            let ok = get_system_state!().configuration.get_base_of_bundle("system", "system").ok_or(anyhow!("System configuration error"))?.get_str("password").ok_or(anyhow!("System configuration error"))? == password;
+        if let Some(password) = post
+            .get("password")
+            .map(|v| v.as_string().cloned().unwrap_or(String::new()))
+        {
+            let ok = get_system_state!()
+                .configuration
+                .get_base_of_bundle("system", "system")
+                .ok_or(anyhow!("System configuration error"))?
+                .get_str("password")
+                .ok_or(anyhow!("System configuration error"))?
+                == password;
             Ok(serde_json::to_string(&ok)?.into_bytes())
         } else {
             Err(anyhow!("Invalid request"))
@@ -178,9 +261,20 @@ fn serve_authenticate(post: Option<HashMap<String, ParameterValue>>) -> anyhow::
 
 fn serve_config_get(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
     if let Some(get) = get {
-        if let (Some(uuid), Some(base), Some(key)) = (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("key").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            if let Some(base) = get_system_state!().configuration.get_base_of_bundle(uuid.as_str(), base.as_str()) {
-                base.get_json(key.as_str()).ok_or(anyhow!("Invalid configuration key: {}", key))
+        if let (Some(uuid), Some(base), Some(key)) = (
+            get.get("uuid")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("base")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("key")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
+            if let Some(base) = get_system_state!()
+                .configuration
+                .get_base_of_bundle(uuid.as_str(), base.as_str())
+            {
+                base.get_json(key.as_str())
+                    .ok_or(anyhow!("Invalid configuration key: {}", key))
             } else {
                 Err(anyhow!("Invalid configuration base: {}", base))
             }
@@ -194,12 +288,20 @@ fn serve_config_get(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Res
 
 fn serve_config_set(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
     if let Some(get) = get {
-        if let (Some(uuid), Some(base), Some(key), Some(value)) =
-            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
-             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new())),
-             get.get("key").map(|v| v.as_string().cloned().unwrap_or(String::new())),
-             get.get("value").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            if let Some(base) = get_system_state!().configuration.get_base_of_bundle_mut(uuid.as_str(), base.as_str()) {
+        if let (Some(uuid), Some(base), Some(key), Some(value)) = (
+            get.get("uuid")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("base")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("key")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("value")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
+            if let Some(base) = get_system_state!()
+                .configuration
+                .get_base_of_bundle_mut(uuid.as_str(), base.as_str())
+            {
                 base.set_json(key.as_str(), value.as_str())?;
             } else {
                 return Err(anyhow!("Invalid configuration base: {}", base));
@@ -219,10 +321,15 @@ fn serve_config_set(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Res
 
 fn serve_config_create_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
     if let Some(get) = get {
-        if let (Some(uuid), Some(base)) =
-            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
-             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            get_system_state!().configuration.create_base_of_bundle(uuid.as_str(), base.as_str())?;
+        if let (Some(uuid), Some(base)) = (
+            get.get("uuid")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("base")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
+            get_system_state!()
+                .configuration
+                .create_base_of_bundle(uuid.as_str(), base.as_str())?;
             get_system_state!().configuration.commit()
         } else {
             Err(anyhow!("Invalid request"))
@@ -234,8 +341,16 @@ fn serve_config_create_base(get: Option<HashMap<String, ParameterValue>>) -> any
 
 fn serve_config_get_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
     if let Some(get) = get {
-        if let (Some(uuid), Some(base)) = (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            if let Some(base) = get_system_state!().configuration.get_base_of_bundle(uuid.as_str(), base.as_str()) {
+        if let (Some(uuid), Some(base)) = (
+            get.get("uuid")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("base")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
+            if let Some(base) = get_system_state!()
+                .configuration
+                .get_base_of_bundle(uuid.as_str(), base.as_str())
+            {
                 base.to_json()
             } else {
                 Err(anyhow!("Invalid configuration base: {}", base))
@@ -248,15 +363,36 @@ fn serve_config_get_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow
     }
 }
 
-fn serve_device(get: Option<HashMap<String, ParameterValue>>, post: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<Vec<u8>> {
+fn serve_device(
+    get: Option<HashMap<String, ParameterValue>>,
+    post: Option<HashMap<String, ParameterValue>>,
+) -> anyhow::Result<Vec<u8>> {
     if let Some(get) = get {
-        if let (Some(device), Some(command)) = (get.get("device").map(|v| v.as_string().cloned().unwrap_or(String::new())), get.get("command").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
+        if let (Some(device), Some(command)) = (
+            get.get("device")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("command")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
             let parameter_map = if let Some(post) = post {
-                post.iter().map(|(k, v)| (k.to_string(), serde_json::from_str::<devices::Value>(v.as_string().unwrap_or(&String::new())).unwrap_or(devices::Value::String(String::new())))).collect::<BTreeMap<String, devices::Value>>()
+                post.iter()
+                    .map(|(k, v)| {
+                        (
+                            k.to_string(),
+                            serde_json::from_str::<devices::Value>(
+                                v.as_string().unwrap_or(&String::new()),
+                            )
+                            .unwrap_or(devices::Value::String(String::new())),
+                        )
+                    })
+                    .collect::<BTreeMap<String, devices::Value>>()
             } else {
                 BTreeMap::new()
             };
-            match get_system_state!().device_manager.command(&device, &command, &parameter_map) {
+            match get_system_state!()
+                .device_manager
+                .command(&device, &command, &parameter_map)
+            {
                 Ok(val) => Ok(serde_json::to_string(&val)?.into_bytes()),
                 Err(msg) => Err(anyhow!("{}", msg)),
             }
@@ -270,10 +406,15 @@ fn serve_device(get: Option<HashMap<String, ParameterValue>>, post: Option<HashM
 
 fn serve_config_delete_base(get: Option<HashMap<String, ParameterValue>>) -> anyhow::Result<()> {
     if let Some(get) = get {
-        if let (Some(uuid), Some(base)) =
-            (get.get("uuid").map(|v| v.as_string().cloned().unwrap_or(String::new())),
-             get.get("base").map(|v| v.as_string().cloned().unwrap_or(String::new()))) {
-            get_system_state!().configuration.delete_base_of_bundle(uuid.as_str(), base.as_str())?;
+        if let (Some(uuid), Some(base)) = (
+            get.get("uuid")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+            get.get("base")
+                .map(|v| v.as_string().cloned().unwrap_or(String::new())),
+        ) {
+            get_system_state!()
+                .configuration
+                .delete_base_of_bundle(uuid.as_str(), base.as_str())?;
             get_system_state!().configuration.commit()?;
             if uuid == "widgets" || uuid == "wifi" {
                 get_system_state!().init();
@@ -294,7 +435,12 @@ fn serve_file(
     post: Option<HashMap<String, ParameterValue>>,
 ) -> anyhow::Result<(String, Vec<u8>)> {
     let base_path = {
-        get_system_state!().app_manager.get_bundle(uuid).ok_or(anyhow!("Bundle not found: {}", uuid))?.base_path.clone()
+        get_system_state!()
+            .app_manager
+            .get_bundle(uuid)
+            .ok_or(anyhow!("Bundle not found: {}", uuid))?
+            .base_path
+            .clone()
     };
     let mut route = PathBuf::from(route);
     if route.components().count() == 0 {
@@ -316,21 +462,43 @@ fn proxy_request(stream: &mut TcpStream, url: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn error_response(stream: &mut TcpStream, message: String, backtrace: Option<String>) -> anyhow::Result<()> {
-    respond(stream, 500, String::from(*CONTENT_TYPES.get("txt").unwrap()), format!("{}\n{}", message, backtrace.or(Some(String::new())).unwrap()).into_bytes())
+fn error_response(
+    stream: &mut TcpStream,
+    message: String,
+    backtrace: Option<String>,
+) -> anyhow::Result<()> {
+    respond(
+        stream,
+        500,
+        String::from(*CONTENT_TYPES.get("txt").unwrap()),
+        format!(
+            "{}\n{}",
+            message,
+            backtrace.or(Some(String::new())).unwrap()
+        )
+        .into_bytes(),
+    )
 }
 
 fn success_response(stream: &mut TcpStream) -> anyhow::Result<()> {
-    respond(stream, 200, String::from(*CONTENT_TYPES.get("json").unwrap()), vec![])
+    respond(
+        stream,
+        200,
+        String::from(*CONTENT_TYPES.get("json").unwrap()),
+        vec![],
+    )
 }
 
-fn respond(stream: &mut TcpStream, status_code: i32, content_type: String, contents: Vec<u8>) -> anyhow::Result<()> {
+fn respond(
+    stream: &mut TcpStream,
+    status_code: i32,
+    content_type: String,
+    contents: Vec<u8>,
+) -> anyhow::Result<()> {
     let response = if status_code == 307 {
-        format!(
-            "{}\r\nLocation: {}\r\n\r\n",
-            "HTTP/1.1 307 OK",
-            unsafe { std::str::from_utf8_unchecked(contents.as_slice()) },
-        )
+        format!("{}\r\nLocation: {}\r\n\r\n", "HTTP/1.1 307 OK", unsafe {
+            std::str::from_utf8_unchecked(contents.as_slice())
+        },)
     } else {
         format!(
             "{}\r\nContent-Length: {}\r\nContent-Type: {}\r\nAccess-Control-Allow-Origin: *\r\n\r\n{}",
@@ -347,18 +515,16 @@ fn respond(stream: &mut TcpStream, status_code: i32, content_type: String, conte
 
 #[macro_export]
 macro_rules! redirect {
-    ($target:expr) => {
-        {
-            use anyhow::bail;
-            use crate::server::http::HttpError;
-            bail!(HttpError::Redirect($target.to_string()))
-        }
-    }
+    ($target:expr) => {{
+        use crate::server::http::HttpError;
+        use anyhow::bail;
+        bail!(HttpError::Redirect($target.to_string()))
+    }};
 }
 
 #[macro_export]
 macro_rules! database_conn {
     ($database:expr) => {
         &mut $database.clone().get().unwrap()
-    }
+    };
 }
