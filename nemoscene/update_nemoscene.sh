@@ -1,3 +1,3 @@
 #!/bin/bash
-cargo build --target arm-unknown-linux-gnueabihf
-sshpass -p "hypefuse" scp target/arm-unknown-linux-gnueabihf/debug/nemoscene hypefuse@linfinitysmartmirror.local:/hypefuse
+cargo build --target aarch64-unknown-linux-gnu
+sshpass -p "hypefuse" scp target/aarch64-unknown-linux-gnu/debug/nemoscene hypefuse@linfinitysmartmirror.local:/hypefuse
